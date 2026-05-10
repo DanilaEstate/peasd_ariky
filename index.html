@@ -3,9 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | Peast Ariky</title>
+    <title>Peast Ariky</title>
     <!-- 1. Подключаем внешний скрипт Яндекса -->
-    <script src="https://yandex.ru/games/sdk/v2"></script>
     <style>
       html, body {
         width: 100%;
@@ -66,19 +65,7 @@
           canvas.style.height = "100%";
       }
 
-      // 2. Сначала инициализируем Яндекс, затем создаем инстанс Unity
-      YaGames.init().then(ysdk => {
-          console.log('Yandex SDK initialized');
-          window.ysdk = ysdk; // Это критически важно для работы плагина в Unity
-
-          createUnityInstance(canvas, config, (progress) => {
-              // Здесь можно оставить пустым или добавить лоадер
-          }).then((unityInstance) => {
-              window.unityInstance = unityInstance;
-          }).catch((message) => {
-              alert(message);
-          });
-      });
+     
     </script>
   </body>
 </html>
