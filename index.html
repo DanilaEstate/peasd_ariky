@@ -71,13 +71,14 @@
       //    console.log('Yandex SDK initialized');
       //    window.ysdk = ysdk; // Это критически важно для работы плагина в Unity
 //
-      //    createUnityInstance(canvas, config, (progress) => {
-      //        // Здесь можно оставить пустым или добавить лоадер
-      //    }).then((unityInstance) => {
-      //        window.unityInstance = unityInstance;
-      //    }).catch((message) => {
-      //        alert(message);
-      //    });
+      //    // 2. Инициализацию Яндекса пропускаем для GitHub, запускаем Unity напрямую
+            createUnityInstance(canvas, config, (progress) => {
+                // лоадер
+            }).then((unityInstance) => {
+                window.unityInstance = unityInstance;
+            }).catch((message) => {
+                alert(message);
+            });
       //});
     </script>
   </body>
