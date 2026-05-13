@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Peast Ariky</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <style>
+      html, body {
+        width: 100%; height: 100%; padding: 0; margin: 0;
+        overflow: hidden; background-color: #000; position: fixed; 
+      }
+
+      .game-container {
+        position: relative; width: 100vw; height: 100vh; overflow: hidden;
+        /* Изолируем изменения внутри контейнера */
+        contain: layout size;
+      }
+
+      /* Фон с увеличением */
+      .bg-img {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        object-fit: cover;
+        z-index: 1;
+        transition: opacity 0.5s ease;
+        animation: zoomEffect 30s linear forwards;
+        will-change: transform;
+      }
+
+      .paused {
+        animation-play-state: paused !important;
+      }
+
+      @keyframes zoomEffect {
+        from { transform: scale(1); }
+        to { transform: scale(1.7); }
+      }
+
+      #loader-wrapper {
+        position: absolute; top: 50%; left: 25%; width: 50%;
+        height: 60px; background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px; overflow: hidden; z-index: 3;
+        transition: opacity 0.5s ease;
+      }
+
+      #progress-bar {
+        width: 0%; height: 100%; background: #8a00ff; transition: width 0.3s ease;
+      }
+
+      #unity-canvas {
+        width: 100vw !important; height: 100vh !important;
+        display: block; position: relative; z-index: 2; object-fit: fill;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container">
+      <img src="Preview.png" class="bg-img">
+      
+      <div id="loader-wrapper">
+        <div id="progress-bar"></div>
+      </div>
+      
+      <canvas id="unity-canvas" tabindex="-1"></canvas>
+    </div>
+
+    <script src="Build/Peast Ariky.loader.js"></script>
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+      var progressBar = document.querySelector("#progress-bar");
+
+      var config = {
+        dataUrl: "Build/Peast Ariky.data",
+        frameworkUrl: "Build/Peast Ariky.framework.js",
+        codeUrl: "Build/Peast Ariky.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DeshaCompany",
+        productName: "Peast Ariky",
+        productVersion: "0.3",
+      };
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          var meta = document.createElement('meta');
+          meta.name = 'viewport';
+          meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes, viewport-fit=cover';
+          document.getElementsByTagName('head')[0].appendChild(meta);
+      }
+
+      createUnityInstance(canvas, config, (progress) => {
+          progressBar.style.width = Math.floor(progress * 100) + "%";
+      }).then((unityInstance) => {
+          var bg = document.querySelector('.bg-img');
+          var loader = document.querySelector('#loader-wrapper');
+          
+          // Ставим анимацию на паузу перед исчезновением
+          bg.classList.add('paused');
+          
+          // Фиксируем текущий стиль для избежания рывка
+          var rect = bg.getBoundingClientRect();
+          bg.style.position = 'fixed';
+          bg.style.width = rect.width + 'px';
+          bg.style.height = rect.height + 'px';
+          
+          bg.style.opacity = '0';
+          loader.style.opacity = '0';
+          
+          setTimeout(() => {
+              bg.remove();
+              loader.remove();
+          }, 500);
+      }).catch((message) => { alert(message); });
+    </script>
+  </body>
+</html>
