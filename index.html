@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Peast Ariky</title>
+    <!-- 1. Подключаем внешний скрипт Яндекса -->
+    <!--<script src="https://yandex.ru/games/sdk/v2"></script>-->
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <style>
+      html, body {
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+        background-color: #000; 
+        position: fixed; 
+      }
+
+      /* Контейнер для фона и канваса */
+      .game-container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* Слой с фоновой картинкой и эффектом зума */
+      .background-zoom {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: url('Build/Peast Ariky.jpg') center / cover;
+        z-index: 1;
+        animation: zoomEffect 30s linear infinite;
+      }
+
+      @keyframes zoomEffect {
+        from { transform: scale(1); }
+        to { transform: scale(1.3); }
+      }
+
+      /* Стиль полоски загрузки */
+      #loader-wrapper {
+        position: absolute;
+        bottom: 10%; left: 10%;
+        width: 80%; height: 15px;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 8px;
+        overflow: hidden;
+        z-index: 3;
+        border: 2px solid #fff;
+      }
+
+      #progress-bar {
+        width: 0%;
+        height: 100%;
+        background: #4caf50;
+        transition: width 0.3s ease;
+      }
+
+      #unity-canvas {
+        width: 100vw !important;
+        height: 100vh !important;
+        display: block;
+        position: relative;
+        z-index: 2;
+        object-fit: fill;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container">
+      <div class="background-zoom"></div>
+      
+      <div id="loader-wrapper">
+        <div id="progress-bar"></div>
+      </div>
+      
+      <canvas id="unity-canvas" tabindex="-1"></canvas>
+    </div>
+
+    <script src="Build/Peast Ariky.loader.js"></script>
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+      var progressBar = document.querySelector("#progress-bar");
+
+      var config = {
+        dataUrl: "Build/Peast Ariky.data",
+        frameworkUrl: "Build/Peast Ariky.framework.js",
+        codeUrl: "Build/Peast Ariky.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DeshaCompany",
+        productName: "Peast Ariky",
+        productVersion: "0.3",
+      };
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          var meta = document.createElement('meta');
+          meta.name = 'viewport';
+          meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes, viewport-fit=cover';
+          document.getElementsByTagName('head')[0].appendChild(meta);
+      }
+
+      // 2. Сначала инициализируем Яндекс, затем создаем инстанс Unity
+      //YaGames.init().then(ysdk => {
+      //    console.log('Yandex SDK initialized');
+      //    window.ysdk = ysdk; // Это критически важно для работы плагина в Unity
+
+      // 3. Инициализацию Яндекса пропускаем для GitHub, запускаем Unity напрямую
+      createUnityInstance(canvas, config, (progress) => {
+          // Обновляем ширину полоски загрузки
+          progressBar.style.width = Math.floor(progress * 100) + "%";
+      }).then((unityInstance) => {
+          window.unityInstance = unityInstance;
+          // Как только игра загрузилась, убираем фон и лоадер
+          document.querySelector('.background-zoom').style.display = 'none';
+          document.querySelector('#loader-wrapper').style.display = 'none';
+      }).catch((message) => {
+          alert(message);
+      });
+      //});
+    </script>
+  </body>
+</html>
