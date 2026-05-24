@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Peasd Ariky</title>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <style>
+        html, body {
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+        /* Убираем fixed, если он мешает, используем absolute растяжение */
+        position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+    }
+
+    .game-container {
+        position: absolute;
+        /* Растягиваем по координатам, а не по высоте — это надежнее */
+        top: 0; left: 0; bottom: 0; right: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        display: block;
+    }
+
+    #unity-canvas {
+    /* Растягиваем канвас по краям окна, игнорируя системные отступы */
+    width: 100% !important;
+    height: 100% !important;
+    
+    position: fixed; /* Fixed работает стабильнее Absolute в Safari Mobile */
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    
+    z-index: 2;
+    object-fit: fill; /* Растягивает картинку, даже если пропорции не совпадают */
+    
+    /* Это заставляет контент игнорировать "безопасные зоны" челки и полоски снизу */
+    margin: 0;
+    padding: 0;
+}
+
+    /* Остальные стили (bg-img, loader) оставляем без изменений */
+    .bg-img {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        object-fit: cover;
+        z-index: 1;
+        transform-origin: left center; 
+        transition: opacity 0.5s ease;
+        animation: zoomEffect 30s linear forwards;
+        will-change: transform;
+    }
+
+    @keyframes zoomEffect {
+        from { transform: scale(1); }
+        to { transform: scale(1.7); }
+    }
+
+    #loader-wrapper {
+        position: absolute; top: 50%; left: 25%; width: 50%;
+        height: 60px; background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px; overflow: hidden; z-index: 3;
+    }
+
+    #progress-bar {
+        width: 0%; height: 100%; background: #8a00ff; transition: width 0.3s ease;
+    }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <img src="Preview.png" class="bg-img">
+        <div id="loader-wrapper">
+            <div id="progress-bar"></div>
+        </div>
+        <canvas id="unity-canvas" tabindex="-1"></canvas>
+    </div>
+
+    <script src="Build/Peasd Ariky.loader.js"></script>
+    <script>
+        var canvas = document.querySelector("#unity-canvas");
+        var progressBar = document.querySelector("#progress-bar");
+        var container = document.querySelector(".game-container");
+
+        // Умная коррекция геометрии
+        function fixGeometry() {
+    // Прокрутка в 0 — база для скрытия адресной строки
+    window.scrollTo(0, 0);
+    
+    // Используем dvh (dynamic viewport height) для контейнера
+    container.style.height = '100dvh';
+    
+    // Принудительно заставляем канвас быть размером с окно
+    if (canvas) {
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+    }
+}
+
+    // Слушаем resize и поворот
+    window.addEventListener('resize', fixGeometry);
+    window.addEventListener('orientationchange', () => setTimeout(fixGeometry, 200));
+
+        var config = {
+            dataUrl: "Build/Peasd Ariky.data",
+            frameworkUrl: "Build/Peasd Ariky.framework.js",
+            codeUrl: "Build/Peasd Ariky.wasm",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "DeshaCompany",
+            productName: "Peasd Ariky",
+            productVersion: "0.3",
+        };
+
+        createUnityInstance(canvas, config, (progress) => {
+            progressBar.style.width = Math.floor(progress * 100) + "%";
+            if (progress >= 1.0) {
+                progressBar.style.opacity = '0';
+            }
+        }).then((unityInstance) => {
+            var bg = document.querySelector('.bg-img');
+            var loader = document.querySelector('#loader-wrapper');
+            
+            fixGeometry();
+            
+            bg.style.opacity = '0';
+            loader.style.opacity = '0';
+            
+            window.focus();
+            canvas.focus();
+            
+            setTimeout(() => {
+                if(bg) bg.remove();
+                if(loader) loader.remove();
+            }, 500);
+        }).catch((message) => { 
+            alert("Ошибка загрузки: " + message); 
+        });
+
+        // Начальный вызов
+        fixGeometry();
+    </script>
+</body>
+</html>
