@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+  <title>Peasd Ariky</title>
+
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <meta
+    name="viewport"
+    content="width=device-width,
+             initial-scale=1.0,
+             maximum-scale=1.0,
+             user-scalable=no,
+             viewport-fit=cover">
+
+  <style>
+    :root {
+      --app-height: 100vh;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+
+    html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+
+      position: fixed;
+      inset: 0;
+    }
+
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+
+      position: fixed;
+      inset: 0;
+
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+
+    #unity-container {
+      position: fixed;
+      inset: 0;
+
+      width: 100%;
+      height: var(--app-height);
+
+      overflow: hidden;
+      background: #000;
+    }
+
+    #unity-canvas {
+      position: absolute;
+      inset: 0;
+
+      width: 100% !important;
+      height: 100% !important;
+
+      display: block;
+      background: #000;
+
+      outline: none;
+      border: none;
+
+      touch-action: none;
+    }
+
+    .bg-img {
+      position: absolute;
+      inset: 0;
+
+      width: 100%;
+      height: 100%;
+
+      object-fit: cover;
+
+      z-index: 1;
+
+      transform-origin: left center;
+
+      animation: zoomEffect 30s linear forwards;
+
+      transition: opacity 0.5s ease;
+
+      will-change: transform;
+      backface-visibility: hidden;
+    }
+
+    @keyframes zoomEffect {
+      from {
+        transform: scale(1);
+      }
+      to {
+        transform: scale(1.7);
+      }
+    }
+
+    #loader-wrapper {
+      position: absolute;
+
+      left: 25%;
+      top: 50%;
+
+      width: 50%;
+      height: 60px;
+
+      transform: translateY(-50%);
+
+      background: rgba(0,0,0,0.35);
+
+      border-radius: 16px;
+
+      overflow: hidden;
+
+      z-index: 10;
+
+      transition: opacity 0.5s ease;
+    }
+
+    #progress-bar {
+      width: 0%;
+      height: 100%;
+
+      background: #8a00ff;
+
+      transition: width 0.25s ease;
+    }
+  </style>
+
+  <script>
+    function updateRealViewport() {
+      let height;
+
+      if (window.visualViewport) {
+        height = window.visualViewport.height;
+      } else {
+        height = window.innerHeight;
+      }
+
+      document.documentElement.style.setProperty(
+        '--app-height',
+        height + 'px'
+      );
+    }
+
+    function forceReflow() {
+      document.body.style.display = 'none';
+
+      document.body.offsetHeight;
+
+      document.body.style.display = '';
+    }
+
+    function fullIOSFix() {
+      updateRealViewport();
+
+      requestAnimationFrame(() => {
+        updateRealViewport();
+
+        setTimeout(() => {
+          updateRealViewport();
+          forceReflow();
+        }, 50);
+
+        setTimeout(() => {
+          updateRealViewport();
+        }, 250);
+      });
+    }
+
+    window.addEventListener('resize', fullIOSFix);
+    window.addEventListener('orientationchange', fullIOSFix);
+    window.addEventListener('focus', fullIOSFix);
+    window.addEventListener('pageshow', fullIOSFix);
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener(
+        'resize',
+        fullIOSFix
+      );
+    }
+
+    document.addEventListener(
+      'visibilitychange',
+      () => {
+        if (!document.hidden) {
+          fullIOSFix();
+        }
+      }
+    );
+
+    fullIOSFix();
+  </script>
+</head>
+
+<body>
+  <div id="unity-container">
+
+    <img src="Preview.png" class="bg-img">
+
+    <div id="loader-wrapper">
+      <div id="progress-bar"></div>
+    </div>
+
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+
+  </div>
+
+  <script src="Build/Peasd Ariky.loader.js"></script>
+
+  <script>
+    const canvas = document.querySelector('#unity-canvas');
+    const progressBar = document.querySelector('#progress-bar');
+
+    const config = {
+      dataUrl: "Build/Peasd Ariky.data",
+      frameworkUrl: "Build/Peasd Ariky.framework.js",
+      codeUrl: "Build/Peasd Ariky.wasm",
+      streamingAssetsUrl: "StreamingAssets",
+
+      companyName: "DeshaCompany",
+      productName: "Peasd Ariky",
+      productVersion: "0.3",
+
+      devicePixelRatio: 1
+    };
+
+    function resizeCanvas() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      const rect = canvas.getBoundingClientRect();
+
+      const width = Math.round(rect.width * dpr);
+      const height = Math.round(rect.height * dpr);
+
+      if (
+        canvas.width !== width ||
+        canvas.height !== height
+      ) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+    }
+
+    createUnityInstance(
+      canvas,
+      config,
+      (progress) => {
+        progressBar.style.width =
+          Math.floor(progress * 100) + '%';
+
+        if (progress >= 1) {
+          progressBar.style.opacity = '0';
+        }
+      }
+    ).then((unityInstance) => {
+
+      resizeCanvas();
+
+      fullIOSFix();
+
+      window.focus();
+      canvas.focus();
+
+      setTimeout(() => {
+        resizeCanvas();
+        fullIOSFix();
+      }, 100);
+
+      setTimeout(() => {
+        resizeCanvas();
+        fullIOSFix();
+      }, 500);
+
+      setTimeout(() => {
+        resizeCanvas();
+        fullIOSFix();
+      }, 1000);
+
+      const bg = document.querySelector('.bg-img');
+      const loader = document.querySelector('#loader-wrapper');
+
+      bg.style.opacity = '0';
+      loader.style.opacity = '0';
+
+      setTimeout(() => {
+        bg.remove();
+        loader.remove();
+      }, 500);
+
+      window.addEventListener('resize', resizeCanvas);
+
+      window.addEventListener(
+        'orientationchange',
+        () => {
+          setTimeout(() => {
+            resizeCanvas();
+            fullIOSFix();
+          }, 100);
+        }
+      );
+
+    }).catch((message) => {
+      alert(message);
+    });
+  </script>
+</body>
+</html>
