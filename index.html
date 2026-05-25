@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+<title>Peasd Ariky</title>
+
+<meta name="viewport"
+      content="width=device-width,
+      initial-scale=1.0,
+      maximum-scale=1.0,
+      user-scalable=no,
+      viewport-fit=cover">
+
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<style>
+
+/* ---------------- BASE ---------------- */
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+}
+
+/* safe area */
+body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ---------------- ROOT ---------------- */
+
+.game-container {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: calc(var(--vh, 1vh) * 100);
+    overflow: hidden;
+    background: #000;
+}
+
+/* ---------------- PREVIEW (FIXED) ---------------- */
+
+.preview {
+    position: absolute;
+    inset: 0;
+    background: url("Preview.png") no-repeat;
+    background-size: cover;
+
+    /* 🔥 ключ: фиксируем левый центр */
+    background-position: left center;
+
+    transform: scale(1.05); /* лёгкий зум */
+    transform-origin: left center;
+
+    z-index: 1;
+}
+
+/* ---------------- UNITY ---------------- */
+
+#unity-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #000;
+    z-index: 2;
+
+    visibility: hidden;
+}
+
+body.ready #unity-canvas {
+    visibility: visible;
+}
+
+/* ---------------- LOADER ---------------- */
+
+#loader-wrapper {
+    position: absolute;
+    top: 50%;
+    left: 25%;
+    width: 50%;
+    height: 60px;
+
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.3);
+    border-radius: 15px;
+
+    overflow: hidden;
+    z-index: 3;
+}
+
+#progress-bar {
+    width: 0%;
+    height: 100%;
+    background: #8a00ff;
+    transition: width 0.3s ease;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="game-container">
+
+    <!-- 🔥 FIX: preview отдельным слоем -->
+    <div class="preview"></div>
+
+    <div id="loader-wrapper">
+        <div id="progress-bar"></div>
+    </div>
+
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+
+</div>
+
+<script src="Build/Peasd Ariky.loader.js"></script>
+
+<script>
+
+const canvas = document.querySelector("#unity-canvas");
+const progressBar = document.querySelector("#progress-bar");
+const preview = document.querySelector(".preview");
+
+/* ---------------- VH FIX ---------------- */
+
+function setVH() {
+    const vh = (window.visualViewport?.height || window.innerHeight) * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+/* ---------------- RESIZE ---------------- */
+
+function resizeCanvas() {
+
+    const w = window.visualViewport?.width || window.innerWidth;
+    const h = window.visualViewport?.height || window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+}
+
+/* ---------------- SHOW FIX ---------------- */
+
+function showApp() {
+    document.body.classList.add("ready");
+
+    // плавно убираем preview только после первого frame
+    requestAnimationFrame(() => {
+        preview.style.opacity = "0";
+    });
+}
+
+/* ---------------- BOOT ---------------- */
+
+setVH();
+resizeCanvas();
+
+/* даём iOS сначала отрисовать preview */
+requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+
+        showApp();
+
+        createUnityInstance(canvas, {
+            dataUrl: "Build/Peasd Ariky.data",
+            frameworkUrl: "Build/Peasd Ariky.framework.js",
+            codeUrl: "Build/Peasd Ariky.wasm",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "DeshaCompany",
+            productName: "Peasd Ariky",
+            productVersion: "0.3",
+            matchWebGLToCanvasSize: true,
+            devicePixelRatio: window.devicePixelRatio || 1
+
+        }, (progress) => {
+            progressBar.style.width = Math.floor(progress * 100) + "%";
+
+        }).then(() => {
+
+            const loader = document.querySelector("#loader-wrapper");
+
+            setTimeout(() => {
+                if (loader) loader.remove();
+                if (preview) preview.remove();
+            }, 400);
+
+        });
+
+    });
+});
+
+</script>
+
+</body>
+</html>
