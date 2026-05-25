@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Peasd Ariky</title>
+
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <style>
+      :root {
+        --safe-top: 0px;
+        --app-height: 100vh;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: black;
+        touch-action: none;
+      }
+
+      body {
+        position: fixed;
+        inset: 0;
+      }
+
+      .game-container {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        background: black;
+      }
+
+      /* ПОРТРЕТ:
+         сверху всегда черная полоса,
+         canvas смещается вниз,
+         поэтому клики НЕ уезжают */
+      @media (orientation: portrait) {
+        .game-container {
+          padding-top: var(--safe-top);
+        }
+
+        #unity-canvas {
+          height: calc(var(--app-height) - var(--safe-top)) !important;
+        }
+      }
+
+      /* ГОРИЗОНТ:
+         полностью безрамочный экран */
+      @media (orientation: landscape) {
+        .game-container {
+          padding-top: 0;
+        }
+
+        #unity-canvas {
+          height: 100% !important;
+        }
+      }
+
+      .bg-img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 1;
+
+        transform-origin: left center;
+        animation: zoomEffect 30s linear forwards;
+
+        will-change: transform;
+        backface-visibility: hidden;
+
+        transition: opacity 0.5s ease;
+      }
+
+      .paused {
+        animation-play-state: paused !important;
+      }
+
+      @keyframes zoomEffect {
+        from {
+          transform: scale(1);
+        }
+
+        to {
+          transform: scale(1.7);
+        }
+      }
+
+      #loader-wrapper {
+        position: absolute;
+        left: 25%;
+        top: 50%;
+
+        width: 50%;
+        height: 60px;
+
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        overflow: hidden;
+
+        z-index: 3;
+
+        transform: translateY(-50%);
+        transition: opacity 0.5s ease;
+      }
+
+      #progress-bar {
+        width: 0%;
+        height: 100%;
+        background: #8a00ff;
+        transition: width 0.3s ease;
+      }
+
+      #unity-canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+
+        width: 100% !important;
+
+        display: block;
+        z-index: 2;
+
+        background: transparent;
+      }
+    </style>
+
+    <script>
+      function updateViewport() {
+        const vv = window.visualViewport;
+
+        const height = vv ? vv.height : window.innerHeight;
+
+        document.documentElement.style.setProperty(
+          '--app-height',
+          height + 'px'
+        );
+
+        const isPortrait = window.innerHeight > window.innerWidth;
+
+        let safeTop = 0;
+
+        if (isPortrait) {
+          safeTop = Math.max(
+            0,
+            vv
+              ? window.innerHeight - vv.height - vv.offsetTop
+              : 0
+          );
+
+          /* fallback для iPhone с челкой */
+          if (safeTop < 20) {
+            safeTop = 47;
+          }
+        }
+
+        document.documentElement.style.setProperty(
+          '--safe-top',
+          safeTop + 'px'
+        );
+      }
+
+      window.addEventListener('resize', updateViewport);
+      window.addEventListener('orientationchange', () => {
+        setTimeout(updateViewport, 100);
+        setTimeout(updateViewport, 300);
+      });
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', updateViewport);
+      }
+
+      updateViewport();
+    </script>
+  </head>
+
+  <body>
+    <div class="game-container">
+      <img src="Preview.png" class="bg-img">
+
+      <div id="loader-wrapper">
+        <div id="progress-bar"></div>
+      </div>
+
+      <canvas id="unity-canvas" tabindex="-1"></canvas>
+    </div>
+
+    <script src="Build/Peasd Ariky.loader.js"></script>
+
+    <script>
+      const canvas = document.querySelector("#unity-canvas");
+      const progressBar = document.querySelector("#progress-bar");
+
+      const config = {
+        dataUrl: "Build/Peasd Ariky.data",
+        frameworkUrl: "Build/Peasd Ariky.framework.js",
+        codeUrl: "Build/Peasd Ariky.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DeshaCompany",
+        productName: "Peasd Ariky",
+        productVersion: "0.3",
+      };
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        const meta = document.createElement('meta');
+
+        meta.name = 'viewport';
+        meta.content =
+          'width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no';
+
+        document.head.appendChild(meta);
+      }
+
+      createUnityInstance(canvas, config, (progress) => {
+        progressBar.style.width =
+          Math.floor(progress * 100) + "%";
+
+        if (progress >= 1) {
+          progressBar.style.opacity = '0';
+        }
+      })
+      .then((unityInstance) => {
+        const bg = document.querySelector('.bg-img');
+        const loader = document.querySelector('#loader-wrapper');
+
+        bg.style.opacity = '0';
+        loader.style.opacity = '0';
+
+        updateViewport();
+
+        setTimeout(() => {
+          bg.remove();
+          loader.remove();
+
+          updateViewport();
+
+          window.dispatchEvent(new Event('resize'));
+        }, 500);
+
+        window.focus();
+        canvas.focus();
+      })
+      .catch((message) => {
+        alert(message);
+      });
+    </script>
+  </body>
+</html>
