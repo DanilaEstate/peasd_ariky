@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+    <!-- ИСПРАВЛЕНО: viewport теперь СТАТИЧЕСКИЙ тег в head.
+         Раньше он создавался из JavaScript уже после загрузки страницы —
+         Safari к этому моменту успевал применить viewport по умолчанию,
+         БЕЗ viewport-fit=cover, поэтому вырез ("чёрный срез") сверху
+         оставался чёрной полосой. viewport-fit=cover обязателен именно
+         в разметке, до первого рендера. -->
+    <meta name="viewport"
+          content="width=device-width, height=device-height, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
+
+    <title>Peasd Ariky</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <!-- ИСПРАВЛЕНО: имя мета-тега было с опечаткой
+         (apple-mobile-web-app-status-style вместо -status-bar-style),
+         поэтому строка статуса iOS не становилась прозрачной. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <meta name="theme-color" content="#000000">
+
+    <style>
+      :root {
+        /* Значение по умолчанию до первого запуска скрипта: 100dvh —
+           это "динамическая" высота экрана, она уже учитывает исчезающую
+           панель адреса Safari. Если браузер её не знает, работает
+           предыдущая строка (100vh). Раньше --app-height не имел
+           значения по умолчанию вовсе, и до выполнения скрипта высота
+           была нулевой. */
+        --app-height: 100vh;
+        --app-height: 100dvh;
+      }
+
+      html, body {
+        width: 100%;
+        height: var(--app-height);
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+        box-sizing: border-box;
+
+        /* Безрамочный режим: игра рисуется ПОД вырезом и
+           под системными полосами, а не рядом с ними. */
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+
+      body {
+        /* position: fixed убирает "резиновую" протяжку страницы на iOS,
+           из-за которой при повороте экрана содержимое могло остаться
+           сдвинутым и снизу вылезала чёрная полоса. */
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overscroll-behavior: none;
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .game-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: var(--app-height);
+        overflow: hidden;
+      }
+
+      .bg-img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 1;
+        transform-origin: center;
+        transition: opacity 0.5s ease;
+        animation: zoomEffect 30s linear forwards;
+        will-change: transform;
+        backface-visibility: hidden;
+      }
+
+      .paused {
+        animation-play-state: paused !important;
+      }
+
+      @keyframes zoomEffect {
+        from { transform: scale(1); }
+        to { transform: scale(1.5); }
+      }
+
+      #loader-wrapper {
+        position: absolute;
+        top: 50%;
+        left: 25%;
+        width: 50%;
+        height: 60px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        overflow: hidden;
+        z-index: 3;
+        transition: opacity 0.5s ease;
+      }
+
+      #progress-bar {
+        width: 0%;
+        height: 100%;
+        background: #8a00ff;
+        transition: width 0.25s ease;
+      }
+
+      #unity-canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 2;
+        object-fit: fill;
+        /* Без этого двойной тап по канвасу на iOS зумит всю страницу,
+           после чего игра остаётся смещённой. */
+        touch-action: none;
+      }
+    </style>
+
+    <script>
+      // ИЗМЕНЕНО: измерение высоты полностью переписано.
+      //
+      // Было: высота бралась из visualViewport.height и применялась
+      // ровно один раз на событие. Две проблемы:
+      //   1) visualViewport.height — это высота ВИДИМОЙ области, она
+      //      уменьшается, когда Safari показывает панель адреса. Игра
+      //      подстраивалась под уменьшенный размер, а сверху/снизу
+      //      оставались чёрные поля.
+      //   2) iOS при повороте экрана сообщает СТАРЫЕ размеры окна в
+      //      момент самого события orientationchange/resize. Значение
+      //      применялось до фактического поворота — отсюда и баги
+      //      "перевернул в горизонталь и обратно".
+      //
+      // Стало: берём максимум из доступных источников высоты и
+      // перемеряем несколько раз после поворота, пока размер не
+      // устоится.
+      (function () {
+        var lastW = 0;
+        var lastH = 0;
+
+        function measure() {
+          var vv = window.visualViewport;
+
+          var h = Math.max(
+            window.innerHeight || 0,
+            document.documentElement ? document.documentElement.clientHeight : 0,
+            vv ? vv.height : 0
+          );
+
+          var w = Math.max(
+            window.innerWidth || 0,
+            document.documentElement ? document.documentElement.clientWidth : 0,
+            vv ? vv.width : 0
+          );
+
+          return { w: w, h: h };
+        }
+
+        function apply(force) {
+          var size = measure();
+          if (!size.h) return;
+
+          if (!force && size.w === lastW && size.h === lastH) return;
+
+          lastW = size.w;
+          lastH = size.h;
+
+          document.documentElement.style.setProperty('--app-height', size.h + 'px');
+
+          // Unity сам слушает 'resize', чтобы пересчитать размер
+          // буфера рендера под новый CSS-размер канваса. Без этого
+          // после поворота картинка оставалась растянутой от прошлой
+          // ориентации.
+          window.dispatchEvent(new Event('resize'));
+        }
+
+        // ДОБАВЛЕНО: серия повторных замеров. Один замер после поворота
+        // на iOS почти всегда попадает в момент, когда размеры окна ещё
+        // не обновились, поэтому перемеряем и на следующих кадрах, и
+        // с задержками — до тех пор, пока значение не перестанет меняться.
+        function applySettled() {
+          apply(false);
+
+          requestAnimationFrame(function () {
+            apply(false);
+            requestAnimationFrame(function () { apply(false); });
+          });
+
+          var delays = [50, 120, 250, 400, 700, 1000];
+          for (var i = 0; i < delays.length; i++) {
+            setTimeout(function () { apply(false); }, delays[i]);
+          }
+        }
+
+        window.addEventListener('resize', applySettled);
+        window.addEventListener('orientationchange', applySettled);
+        window.addEventListener('pageshow', applySettled);
+        window.addEventListener('focus', applySettled);
+
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) applySettled();
+        });
+
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', applySettled);
+          window.visualViewport.addEventListener('scroll', applySettled);
+        }
+
+        // Современный способ отследить поворот там, где он есть.
+        if (window.screen && window.screen.orientation &&
+            typeof window.screen.orientation.addEventListener === 'function') {
+          window.screen.orientation.addEventListener('change', applySettled);
+        }
+
+        // ДОБАВЛЕНО: на iOS "резиновая" прокрутка после поворота может
+        // оставить страницу сдвинутой вниз — и сверху появляется чёрная
+        // полоса, даже если высота посчитана верно.
+        window.addEventListener('scroll', function () {
+          if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
+        }, { passive: true });
+
+        // Двойной тап на iOS зумит страницу, и она остаётся смещённой.
+        var lastTouchEnd = 0;
+        document.addEventListener('touchend', function (e) {
+          var now = Date.now();
+          if (now - lastTouchEnd <= 300) e.preventDefault();
+          lastTouchEnd = now;
+        }, { passive: false });
+
+        document.addEventListener('gesturestart', function (e) {
+          e.preventDefault();
+        }, { passive: false });
+
+        window.__applyAppHeight = applySettled;
+
+        apply(true);
+        applySettled();
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="game-container">
+      <img src="Preview.png" class="bg-img">
+
+      <div id="loader-wrapper">
+        <div id="progress-bar"></div>
+      </div>
+
+      <canvas id="unity-canvas" tabindex="-1"></canvas>
+    </div>
+
+    <script src="Build/Peasd Ariky.loader.js"></script>
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+      var progressBar = document.querySelector("#progress-bar");
+
+      var config = {
+        dataUrl: "Build/Peasd Ariky.data.unityweb",
+        frameworkUrl: "Build/Peasd Ariky.framework.js.unityweb",
+        codeUrl: "Build/Peasd Ariky.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DeshaCompany",
+        productName: "Peasd Ariky",
+        productVersion: "0.4",
+
+        // ДОБАВЛЕНО: не даём Unity самому подставлять внутренние
+        // размеры канваса под devicePixelRatio без нашего ведома —
+        // размер целиком задаётся CSS (100% контейнера), а Unity
+        // подстраивается по событию resize.
+        matchWebGLToCanvasSize: true,
+      };
+
+      // УДАЛЕНО: создание meta viewport из JavaScript. Теперь этот тег
+      // статически прописан в head (см. комментарий там) — только так
+      // viewport-fit=cover срабатывает и вырез перестаёт быть чёрным.
+
+      createUnityInstance(canvas, config, (progress) => {
+        progressBar.style.width = Math.floor(progress * 100) + "%";
+
+        if (progress >= 1.0) {
+          progressBar.style.opacity = '0';
+        }
+      }).then((unityInstance) => {
+        var bg = document.querySelector('.bg-img');
+        var loader = document.querySelector('#loader-wrapper');
+
+        bg.style.opacity = '0';
+        loader.style.opacity = '0';
+
+        window.focus();
+        canvas.focus();
+
+        // ИЗМЕНЕНО: раньше здесь просто отправлялся один 'resize'.
+        // Теперь пересчитываем высоту нашей же функцией (она заодно
+        // отправит resize) и повторяем ещё раз после первых кадров —
+        // на момент готовности Unity размеры экрана на мобильных
+        // браузерах ещё могут доезжать.
+        if (window.__applyAppHeight) window.__applyAppHeight();
+
+        setTimeout(() => {
+          if (window.__applyAppHeight) window.__applyAppHeight();
+        }, 300);
+
+        setTimeout(() => {
+          bg.remove();
+          loader.remove();
+        }, 500);
+      }).catch((message) => {
+        alert(message);
+      });
+    </script>
+  </body>
+</html>
