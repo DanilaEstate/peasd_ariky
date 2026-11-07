@@ -1,0 +1,21 @@
+{
+  "id": "./?v=11",
+  "name": "Peasd Ariky",
+  "short_name": "Peasd Ariky",
+  "description": "",
+  "start_url": "./?v=11",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#151a33",
+  "theme_color": "#151a33",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
